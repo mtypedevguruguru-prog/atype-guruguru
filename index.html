@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aタイプカウンター">
+<meta name="description" content="Aタイプスロット小役カウンター・データ記録ツール">
+<link rel="manifest" href="manifest.json">
+<title>Aタイプ小役カウンター</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f1a;color:#fff}
+.screen{display:none;height:100vh;overflow-y:auto;flex-direction:column}
+.screen.active{display:flex}
+
+/* ヘッダー */
+.hdr{background:#1a1a2e;padding:env(safe-area-inset-top,12px) 16px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:0.5px solid rgba(255,255,255,0.08)}
+.hdr-title{font-size:16px;font-weight:500}
+.hdr-sub{font-size:10px;opacity:0.45;margin-top:2px}
+.back-btn{background:#fff;border:none;color:#534AB7;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;display:none}
+.back-btn.show{display:block}
+
+/* カレンダー */
+.cal-wrap{flex:1;overflow-y:auto;background:#0f0f1a}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1a1a2e;border-bottom:0.5px solid rgba(255,255,255,0.08)}
+.cal-nav button{background:rgba(255,255,255,0.1);border:0.5px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 12px;font-size:13px;cursor:pointer;color:#fff}
+.cal-month{font-size:14px;font-weight:500}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 6px 4px;background:#1a1a2e}
+.cal-dow{text-align:center;font-size:10px;color:rgba(255,255,255,0.35);padding:4px 0}
+.cal-day{text-align:center;padding:3px 0;cursor:pointer;border-radius:6px}
+.cal-day:active{background:rgba(255,255,255,0.08)}
+.cal-day .dn{font-size:13px;color:rgba(255,255,255,0.7);line-height:1.8}
+.cal-day.other .dn{color:rgba(255,255,255,0.2)}
+.cal-day.today .dn{color:#7F77DD;font-weight:500}
+.cal-day.selected{background:rgba(83,74,183,0.3)}
+.cal-day.selected .dn{color:#a89ff5;font-weight:500}
+.cal-dot{width:4px;height:4px;border-radius:50%;background:#7F77DD;margin:1px auto 0}
+.cal-sessions{padding:12px 14px 0}
+.sess-title{font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);margin-bottom:10px;letter-spacing:0.5px}
+.sess-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,0.1);margin-bottom:8px;cursor:pointer;background:rgba(255,255,255,0.04)}
+.sess-item:active{background:rgba(255,255,255,0.08)}
+.sess-info{flex:1;min-width:0}
+.sess-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess-meta{font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px}
+.sess-badge{font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;flex-shrink:0}
+.new-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 14px 40px;padding:13px;border-radius:12px;background:#534AB7;color:#fff;font-size:15px;font-weight:500;cursor:pointer;border:none;width:calc(100% - 28px)}
+.new-btn:active{opacity:0.85}
+.empty-msg{text-align:center;padding:24px 0;font-size:12px;color:rgba(255,255,255,0.3)}
+
+/* フォーム */
+.form-wrap{flex:1;overflow-y:auto;padding:16px 14px}
+.form-label{font-size:11px;color:rgba(255,255,255,0.45);margin-bottom:6px;font-weight:500;letter-spacing:0.3px}
+.form-input{width:100%;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:11px 12px;font-size:15px;background:rgba(255,255,255,0.06);color:#fff;margin-bottom:16px}
+.form-input:focus{outline:none;border-color:#7F77DD}
+.form-input::placeholder{color:rgba(255,255,255,0.25)}
+.form-hint{font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:16px;line-height:1.6;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:8px}
+.machine-list{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.machine-opt{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,0.1);cursor:pointer;background:rgba(255,255,255,0.04)}
+.machine-opt:active{background:rgba(255,255,255,0.08)}
+.machine-opt.sel{border-color:#7F77DD;background:rgba(83,74,183,0.2)}
+.machine-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.machine-name{font-size:13px;font-weight:500}
+.machine-note{font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px}
+.start-btn{width:100%;padding:14px;background:#534AB7;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;margin-bottom:40px}
+.start-btn:active{opacity:0.85}
+
+/* カウント画面 */
+.game-zone{background:#0d0d22;padding:14px 14px 10px;flex-shrink:0;border-bottom:0.5px solid rgba(255,255,255,0.06)}
+.game-zone-label{font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:0.8px;margin-bottom:4px}
+.game-zone-row{display:flex;align-items:center;gap:12px}
+.game-zone-num{font-size:40px;font-weight:500;min-width:100px;line-height:1}
+.game-zone-unit{font-size:12px;color:rgba(255,255,255,0.35);margin-top:6px}
+.gbtn-group{display:flex;flex-direction:column;gap:6px;flex:1}
+.gbtn-row{display:flex;gap:6px}
+.gbtn-plus{flex:1;border-radius:8px;border:none;font-size:14px;font-weight:500;padding:10px 0;cursor:pointer;background:#2ecc71;color:#fff}
+.gbtn-plus:active{opacity:0.8;transform:scale(0.95)}
+.gbtn-minus{flex:1;border-radius:8px;border:none;font-size:14px;font-weight:500;padding:10px 0;cursor:pointer;background:#e67e22;color:#fff}
+.gbtn-minus:active{opacity:0.8;transform:scale(0.95)}
+.game-progress{margin-top:8px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+.game-progress-bar{height:100%;background:#7F77DD;border-radius:2px;transition:width 0.3s}
+.g-prog-row{display:flex;justify-content:space-between;margin-top:3px}
+.g-prog-txt{font-size:9px;color:rgba(255,255,255,0.25)}
+
+.counters{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(255,255,255,0.06);flex-shrink:0}
+.cell{background:#111128;padding:12px 10px 9px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.rname{font-size:10px;font-weight:500}
+.cnum{font-size:30px;font-weight:500;line-height:1}
+.cprob{font-size:10px;color:rgba(255,255,255,0.35)}
+.cbtn{width:100%;padding:11px 0;border-radius:10px;border:none;font-size:15px;font-weight:500;cursor:pointer;color:#fff}
+.cbtn:active{opacity:0.8;transform:scale(0.96)}
+.btn-b{background:#639922}.btn-c{background:#D85A30}.btn-r{background:#534AB7}.btn-bg{background:#BA7517}.btn-mc{background:#993556}
+.mrow{display:flex;justify-content:flex-end}
+.mminus{background:none;border:0.5px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);border-radius:4px;font-size:10px;padding:2px 8px;cursor:pointer}
+
+.est-mini{padding:9px 14px;background:#0d0d22;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-top:0.5px solid rgba(255,255,255,0.06)}
+.est-mini-lbl{font-size:10px;color:rgba(255,255,255,0.3)}
+.est-mini-val{font-size:13px;font-weight:500}
+.save-bar{background:#1a1a2e;padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;flex-shrink:0}
+.save-btn{flex:1;padding:12px;background:#534AB7;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer}
+.save-btn:active{opacity:0.85}
+.discard-btn{padding:12px 16px;background:#c0392b;border:none;color:#fff;border-radius:10px;font-size:14px;cursor:pointer}
+.discard-btn:active{opacity:0.8}
+
+/* 詳細画面 */
+.detail-wrap{flex:1;overflow-y:auto;padding:14px 14px 40px}
+.dcard{background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;margin-bottom:10px}
+.drow{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:0.5px solid rgba(255,255,255,0.06)}
+.drow:last-child{border-bottom:none}
+.dk{color:rgba(255,255,255,0.4)}.dv{font-weight:500}
+.dsec{font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);margin-bottom:10px}
+.ebar{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.ebl{font-size:11px;width:26px}
+.ebb{flex:1;height:16px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden}
+.ebf{height:100%;border-radius:3px;transition:width 0.5s}
+.ebp{font-size:10px;color:rgba(255,255,255,0.4);width:34px;text-align:right}
+.est-result{margin-top:10px;padding:10px 12px;border-radius:8px}
+.del-btn{width:100%;padding:12px;background:none;border:0.5px solid rgba(231,76,60,0.5);color:#e74c3c;border-radius:10px;font-size:13px;cursor:pointer;margin-top:4px}
+.del-btn:active{opacity:0.7}
+.ref-note{font-size:11px;color:rgba(255,255,255,0.3);padding:8px 10px;background:rgba(255,255,255,0.03);border-radius:8px;margin-top:8px;line-height:1.5}
+
+.flash{animation:fl 0.15s ease-out}
+@keyframes fl{0%{opacity:0.2}100%{opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- カレンダー画面 -->
+<div class="screen active" id="scr-cal">
+  <div class="hdr">
+    <div><div class="hdr-title">Aタイプ小役カウンター</div><div class="hdr-sub">データ記録ツール</div></div>
+  </div>
+  <div class="cal-wrap">
+    <div class="cal-nav">
+      <button onclick="changeMonth(-1)">＜</button>
+      <div class="cal-month" id="cal-month-label"></div>
+      <button onclick="changeMonth(1)">＞</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-sessions">
+      <div class="sess-title" id="sel-date-label"></div>
+      <div id="sessions-list"></div>
+    </div>
+    <button class="new-btn" onclick="goNew()">＋ 新規カウント開始</button>
+  </div>
+</div>
+
+<!-- 機種選択画面 -->
+<div class="screen" id="scr-form">
+  <div class="hdr">
+    <div><div class="hdr-title" id="form-title">機種・台を選択</div><div class="hdr-sub" id="form-sub"></div></div>
+    <button class="back-btn show" onclick="goBack()">← 戻る</button>
+  </div>
+  <div class="form-wrap">
+    <div class="form-label">台のメモ（任意）</div>
+    <input class="form-input" id="inp-name" type="text" placeholder="例：3番台、島の角" inputmode="text">
+    <div class="form-label">機種を選択</div>
+    <div class="machine-list" id="machine-list"></div>
+    <div class="form-hint">カウント項目は機種ごとに異なります。500G以上カウントすると推測精度が上がります。</div>
+    <button class="start-btn" onclick="startCount()">カウント開始</button>
+  </div>
+</div>
+
+<!-- カウント画面 -->
+<div class="screen" id="scr-count">
+  <div class="hdr">
+    <div><div class="hdr-title" id="count-title">カウント中</div><div class="hdr-sub" id="count-sub"></div></div>
+    <button class="back-btn show" onclick="confirmDiscard()">破棄</button>
+  </div>
+  <div class="game-zone">
+    <div class="game-zone-label">GAME COUNT</div>
+    <div class="game-zone-row">
+      <div>
+        <div class="game-zone-num" id="g-val">0</div>
+        <div class="game-zone-unit">ゲーム数</div>
+      </div>
+      <div class="gbtn-group">
+        <div class="gbtn-row">
+          <button class="gbtn-plus" onclick="ag(1)">+1</button>
+          <button class="gbtn-plus" onclick="ag(10)">+10</button>
+          <button class="gbtn-plus" onclick="ag(50)">+50</button>
+        </div>
+        <div class="gbtn-row">
+          <button class="gbtn-minus" onclick="ag(-1)">-1</button>
+          <button class="gbtn-minus" onclick="ag(-10)">-10</button>
+          <button class="gbtn-minus" onclick="ag(-50)">-50</button>
+        </div>
+      </div>
+    </div>
+    <div class="game-progress"><div class="game-progress-bar" id="g-progress" style="width:0%"></div></div>
+    <div class="g-prog-row">
+      <span class="g-prog-txt">0G</span>
+      <span class="g-prog-txt" id="g-prog-lbl">推測開始まで500G</span>
+      <span class="g-prog-txt">500G</span>
+    </div>
+  </div>
+  <div class="counters" id="counters-grid"></div>
+  <div class="est-mini">
+    <div class="est-mini-lbl">現在の推測</div>
+    <div class="est-mini-val" id="est-mini-val" style="color:rgba(255,255,255,0.25)">500G以上で推測開始</div>
+  </div>
+  <div class="save-bar">
+    <button class="discard-btn" onclick="confirmDiscard()">破棄</button>
+    <button class="save-btn" onclick="saveSession()">保存して終了</button>
+  </div>
+</div>
+
+<!-- 詳細画面 -->
+<div class="screen" id="scr-detail">
+  <div class="hdr">
+    <div><div class="hdr-title">記録の詳細</div><div class="hdr-sub"></div></div>
+    <button class="back-btn show" onclick="goBack()">← 戻る</button>
+  </div>
+  <div class="detail-wrap" id="detail-body"></div>
+</div>
+
+<script>
+/* ── 機種データ ── */
+const MACHINES=[
+  {id:'my5',name:'マイジャグラー5',color:'#7F77DD',note:'ブドウ・REGに設定差大',
+   keys:['b','c','r','bg'],labels:{b:'ブドウ',c:'チェリー',r:'REG',bg:'BIG'},
+   colors:{b:'#639922',c:'#D85A30',r:'#534AB7',bg:'#BA7517'},
+   data:{budou:[1/6.00,1/6.00,1/5.97,1/5.90,1/5.82,1/5.70],reg:[1/409.6,1/385.8,1/360.9,1/304.8,1/270.8,1/218.5],big:[1/273.1,1/270.8,1/260.6,1/248.0,1/228.7,1/218.5]}},
+  {id:'aim',name:'アイムジャグラーEX',color:'#D85A30',note:'設定6のみブドウ差あり',
+   keys:['b','c','r','bg'],labels:{b:'ブドウ',c:'チェリー',r:'REG',bg:'BIG'},
+   colors:{b:'#639922',c:'#D85A30',r:'#534AB7',bg:'#BA7517'},
+   data:{budou:[1/6.02,1/6.02,1/6.02,1/6.02,1/6.02,1/5.83],reg:[1/439.8,1/399.6,1/364.1,1/315.7,1/297.9,1/242.2],big:[1/273.1,1/269.7,1/260.6,1/238.4,1/228.7,1/218.5]}},
+  {id:'funky',name:'ファンキージャグラー2',color:'#1D9E75',note:'中段チェリーに設定差大',
+   keys:['b','mc','r','bg'],labels:{b:'ブドウ',mc:'中段チェリー',r:'REG',bg:'BIG'},
+   colors:{b:'#639922',mc:'#993556',r:'#534AB7',bg:'#BA7517'},
+   data:{budou:[1/5.94,1/5.90,1/5.86,1/5.79,1/5.73,1/5.63],reg:[1/364.1,1/336.1,1/315.7,1/273.1,1/242.2,1/218.5],big:[1/260.6,1/255.9,1/248.0,1/238.4,1/228.7,1/218.5]}},
+  {id:'gogo',name:'ゴーゴージャグラー3',color:'#BA7517',note:'REG設定差小・合算軽め',
+   keys:['b','c','r','bg'],labels:{b:'ブドウ',c:'チェリー',r:'REG',bg:'BIG'},
+   colors:{b:'#639922',c:'#D85A30',r:'#534AB7',bg:'#BA7517'},
+   data:{budou:[1/6.00,1/5.97,1/5.94,1/5.86,1/5.79,1/5.63],reg:[1/336.1,1/315.7,1/297.9,1/273.1,1/260.6,1/242.2],big:[1/154.9,1/153.3,1/151.8,1/148.7,1/145.8,1/140.0]}},
+  {id:'happy',name:'ハッピージャグラーV3',color:'#D4537E',note:'中押しフル攻略で機械割UP',
+   keys:['b','c','r','bg'],labels:{b:'ブドウ',c:'チェリー',r:'REG',bg:'BIG'},
+   colors:{b:'#639922',c:'#D85A30',r:'#534AB7',bg:'#BA7517'},
+   data:{budou:[1/5.94,1/5.90,1/5.86,1/5.79,1/5.73,1/5.63],reg:[1/364.1,1/315.7,1/297.9,1/260.6,1/242.2,1/218.5],big:[1/260.6,1/255.9,1/248.0,1/238.4,1/228.7,1/218.5]}}
+];
+const SET_LABELS=['設定1','設定2','設定3','設定4','設定5','設定6'];
+const SET_COLORS=['#E24B4A','#D85A30','#BA7517','#639922','#1D9E75','#7F77DD'];
+const SET_BG=['rgba(226,75,74,0.15)','rgba(216,90,48,0.15)','rgba(186,117,23,0.15)','rgba(99,153,34,0.15)','rgba(29,158,117,0.15)','rgba(127,119,221,0.15)'];
+const SET_MSG=['低設定の可能性が高い。見切りを検討しよう','低設定寄り。もう少し様子見して','中間設定の可能性。慎重に判断して','中間〜高設定。続行の価値あり','高設定の可能性が高い。粘る価値あり','高設定が最有力。このまま続けよう'];
+const THRESHOLD=500;
+const STORAGE_KEY='atype_sessions_v1';
+
+/* ── ステート ── */
+let sessions=[];
+let cur={g:0,name:'',machineId:'my5',counts:{},date:''};
+let selDate='';
+let viewMonth=new Date();
+let navHistory=[];
+
+/* ── 初期化 ── */
+const today=new Date();
+const todayStr=fmtDS(today);
+selDate=todayStr;
+loadSessions();
+
+/* ── localStorage ── */
+function loadSessions(){
+  try{const d=localStorage.getItem(STORAGE_KEY);if(d)sessions=JSON.parse(d);}catch(e){sessions=[];}
+}
+function saveSessions(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(sessions));}catch(e){}
+}
+
+/* ── ユーティリティ ── */
+function fmtDS(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function fmtJP(s){const[y,m,d]=s.split('-');return`${y}年${parseInt(m)}月${parseInt(d)}日`}
+function getMachine(id){return MACHINES.find(m=>m.id===id)}
+
+/* ── 画面遷移 ── */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('scr-'+id).classList.add('active');
+}
+function push(id){navHistory.push(id);showScreen(id)}
+function goBack(){
+  if(navHistory.length){navHistory.pop();showScreen(navHistory[navHistory.length-1]||'cal')}
+  else showScreen('cal');
+}
+function confirmDiscard(){
+  if(cur.g>0||Object.values(cur.counts).some(v=>v>0)){
+    if(!confirm('カウントデータを破棄しますか？'))return;
+  }
+  navHistory=[];showScreen('cal');
+}
+
+/* ── カレンダー ── */
+function changeMonth(d){viewMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+d,1);renderCal()}
+function renderCal(){
+  const y=viewMonth.getFullYear(),m=viewMonth.getMonth();
+  document.getElementById('cal-month-label').textContent=`${y}年${m+1}月`;
+  const g=document.getElementById('cal-grid');
+  g.innerHTML='';
+  ['日','月','火','水','木','金','土'].forEach(d=>{
+    const e=document.createElement('div');e.className='cal-dow';e.textContent=d;g.appendChild(e);
+  });
+  const first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate(),prev=new Date(y,m,0).getDate();
+  for(let i=0;i<first;i++){
+    const e=document.createElement('div');e.className='cal-day other';
+    e.innerHTML=`<div class="dn">${prev-first+1+i}</div>`;g.appendChild(e);
+  }
+  for(let d=1;d<=last;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const has=sessions.some(s=>s.date===ds);
+    const e=document.createElement('div');
+    e.className='cal-day'+(ds===todayStr?' today':'')+(ds===selDate?' selected':'');
+    e.innerHTML=`<div class="dn">${d}</div>${has?'<div class="cal-dot"></div>':''}`;
+    e.onclick=()=>{selDate=ds;renderCal()};
+    g.appendChild(e);
+  }
+  const rem=(7-(first+last)%7)%7;
+  for(let i=1;i<=rem&&rem<7;i++){
+    const e=document.createElement('div');e.className='cal-day other';
+    e.innerHTML=`<div class="dn">${i}</div>`;g.appendChild(e);
+  }
+  renderSessions();
+}
+function renderSessions(){
+  document.getElementById('sel-date-label').textContent=fmtJP(selDate)+'の記録';
+  const list=document.getElementById('sessions-list');
+  const day=sessions.filter(s=>s.date===selDate);
+  if(!day.length){list.innerHTML='<div class="empty-msg">この日の記録はまだないよ</div>';return}
+  list.innerHTML=day.map(s=>{
+    const mach=getMachine(s.machineId);
+    const bi=bestIdx(s);
+    return`<div class="sess-item" onclick="showDetail('${s.id}')">
+      <div style="width:8px;height:8px;border-radius:50%;background:${mach?.color||'#888'};flex-shrink:0"></div>
+      <div class="sess-info">
+        <div class="sess-name">${s.name}</div>
+        <div class="sess-meta">${mach?.name||''} ／ ${s.g}G ／ BIG:${s.counts.bg||0} ／ REG:${s.counts.r||0}</div>
+      </div>
+      <div class="sess-badge" style="background:${SET_BG[bi]};color:${SET_COLORS[bi]}">${s.g>=THRESHOLD?SET_LABELS[bi]:'参考値'}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ── 新規セッション ── */
+function goNew(){
+  cur={g:0,name:'',machineId:'my5',counts:{},date:selDate};
+  document.getElementById('inp-name').value='';
+  document.getElementById('form-sub').textContent=fmtJP(selDate);
+  renderMachineList();
+  navHistory=[];push('form');
+}
+function renderMachineList(){
+  document.getElementById('machine-list').innerHTML=MACHINES.map(m=>`
+    <div class="machine-opt${m.id===cur.machineId?' sel':''}" id="mo-${m.id}" onclick="selMachine('${m.id}')">
+      <div class="machine-dot" style="background:${m.color}"></div>
+      <div><div class="machine-name">${m.name}</div><div class="machine-note">${m.note}</div></div>
+    </div>`).join('');
+}
+function selMachine(id){
+  cur.machineId=id;
+  document.querySelectorAll('.machine-opt').forEach(e=>e.classList.remove('sel'));
+  document.getElementById('mo-'+id)?.classList.add('sel');
+}
+function startCount(){
+  cur.name=document.getElementById('inp-name').value.trim()||'名前なし';
+  const m=getMachine(cur.machineId);
+  cur.counts={};m.keys.forEach(k=>cur.counts[k]=0);
+  cur.g=0;
+  document.getElementById('count-title').textContent=cur.name;
+  document.getElementById('count-sub').textContent=m.name;
+  renderCountGrid();refreshUI();push('count');
+}
+function renderCountGrid(){
+  const m=getMachine(cur.machineId);
+  const grid=document.getElementById('counters-grid');
+  grid.innerHTML=m.keys.map(k=>`
+    <div class="cell">
+      <div class="rname" style="color:${m.colors[k]}">${m.labels[k]}</div>
+      <div class="cnum" id="n-${k}">0</div>
+      <div class="cprob" id="p-${k}">— G/回</div>
+      <button class="cbtn" style="background:${m.colors[k]}" onclick="cnt('${k}')">カウント</button>
+      <div class="mrow"><button class="mminus" onclick="dc('${k}')">-1</button></div>
+    </div>`).join('');
+}
+
+/* ── カウント操作 ── */
+function ag(n){
+  cur.g=Math.max(0,cur.g+n);
+  const el=document.getElementById('g-val');
+  el.textContent=cur.g;el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+  const pct=Math.min(cur.g/THRESHOLD*100,100);
+  document.getElementById('g-progress').style.width=pct+'%';
+  const rem=Math.max(0,THRESHOLD-cur.g);
+  document.getElementById('g-prog-lbl').textContent=rem>0?`推測開始まで${rem}G`:'推測中';
+  updProbs();updEstMini();
+}
+function cnt(k){
+  cur.counts[k]=(cur.counts[k]||0)+1;
+  const el=document.getElementById('n-'+k);
+  if(el){el.textContent=cur.counts[k];el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}
+  updProbs();updEstMini();
+  if(navigator.vibrate)navigator.vibrate(20);
+}
+function dc(k){
+  if((cur.counts[k]||0)>0){
+    cur.counts[k]--;
+    const el=document.getElementById('n-'+k);
+    if(el)el.textContent=cur.counts[k];
+    updProbs();updEstMini();
+  }
+}
+function updProbs(){
+  const m=getMachine(cur.machineId);
+  m.keys.forEach(k=>{
+    const el=document.getElementById('p-'+k);
+    if(el)el.textContent=cur.g>0&&cur.counts[k]>0?'1/'+Math.round(cur.g/cur.counts[k])+'G':'— G/回';
+  });
+}
+function refreshUI(){
+  const m=getMachine(cur.machineId);
+  m.keys.forEach(k=>{const el=document.getElementById('n-'+k);if(el)el.textContent=cur.counts[k]||0;});
+  document.getElementById('g-val').textContent=cur.g;
+  updProbs();updEstMini();
+}
+
+/* ── 設定推測 ── */
+function calcScores(s){
+  const m=getMachine(s.machineId);if(!m)return new Array(6).fill(1);
+  const d=m.data;
+  return d.budou.map((_,i)=>{
+    let sc=1;
+    if(s.g>=THRESHOLD){
+      const b=s.counts.b||0,r=s.counts.r||0,bg=s.counts.bg||0;
+      if(b>0)sc*=Math.exp(-Math.abs(b/s.g-d.budou[i])/d.budou[i]*5);
+      if(r>0)sc*=Math.exp(-Math.abs(r/s.g-d.reg[i])/d.reg[i]*8);
+      if(bg>0)sc*=Math.exp(-Math.abs(bg/s.g-d.big[i])/d.big[i]*8);
+    }
+    return sc;
+  });
+}
+function bestIdx(s){const sc=calcScores(s);return sc.indexOf(Math.max(...sc))}
+function calcPcts(s){
+  const sc=calcScores(s);const tot=sc.reduce((a,b)=>a+b,0);
+  return sc.map(v=>Math.round(v/tot*100));
+}
+function updEstMini(){
+  const el=document.getElementById('est-mini-val');
+  if(cur.g<THRESHOLD){el.textContent='500G以上で推測開始';el.style.color='rgba(255,255,255,0.25)';return}
+  const bi=bestIdx(cur);
+  el.textContent=SET_LABELS[bi]+'が有力';el.style.color=SET_COLORS[bi];
+}
+
+/* ── 保存 ── */
+function saveSession(){
+  const s={
+    id:'s'+Date.now(),date:cur.date,name:cur.name,machineId:cur.machineId,
+    g:cur.g,counts:{...cur.counts},
+    savedAt:new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})
+  };
+  sessions.push(s);
+  saveSessions();
+  selDate=cur.date;navHistory=[];showScreen('cal');renderCal();
+}
+
+/* ── 詳細 ── */
+function showDetail(id){
+  const s=sessions.find(x=>x.id===id);if(!s)return;
+  const mach=getMachine(s.machineId);
+  const pcts=calcPcts(s);const bi=pcts.indexOf(Math.max(...pcts));const ok=s.g>=THRESHOLD;
+  const rows=(mach?.keys||['bg','r']).map(k=>`
+    <div class="drow">
+      <span class="dk">${mach?.labels[k]||k}</span>
+      <span class="dv">${s.counts[k]||0}回 ${s.g>0&&(s.counts[k]||0)>0?'(1/'+Math.round(s.g/(s.counts[k]||1))+'G)':''}</span>
+    </div>`).join('');
+  document.getElementById('detail-body').innerHTML=`
+    <div class="dcard">
+      <div class="drow"><span class="dk">日付</span><span class="dv">${fmtJP(s.date)}</span></div>
+      <div class="drow"><span class="dk">台名</span><span class="dv">${s.name}</span></div>
+      <div class="drow"><span class="dk">機種</span><span class="dv">${mach?.name||s.machineId}</span></div>
+      <div class="drow"><span class="dk">保存時刻</span><span class="dv">${s.savedAt}</span></div>
+    </div>
+    <div class="dcard">
+      <div class="drow"><span class="dk">ゲーム数</span><span class="dv">${s.g}G</span></div>
+      ${rows}
+    </div>
+    <div class="dcard">
+      <div class="dsec">設定推測${ok?'':' （参考値 / 500G未満）'}</div>
+      ${pcts.map((p,i)=>`
+        <div class="ebar">
+          <div class="ebl">${SET_LABELS[i]}</div>
+          <div class="ebb"><div class="ebf" style="width:${p}%;background:${SET_COLORS[i]}"></div></div>
+          <div class="ebp">${p}%</div>
+        </div>`).join('')}
+      <div class="est-result" style="background:${SET_BG[bi]}">
+        <div style="font-size:13px;font-weight:500;color:${SET_COLORS[bi]}">${SET_LABELS[bi]}が最有力</div>
+        <div style="font-size:11px;color:${SET_COLORS[bi]};margin-top:3px;opacity:0.85">${SET_MSG[bi]}</div>
+      </div>
+      <div class="ref-note">推測はBIG・REGのメーカー公表値およびブドウの業界推測値に基づく参考値です。設定を保証するものではありません。</div>
+    </div>
+    <button class="del-btn" onclick="delSess('${s.id}')">この記録を削除</button>
+  `;
+  push('detail');
+}
+function delSess(id){
+  if(!confirm('この記録を削除しますか？'))return;
+  sessions=sessions.filter(s=>s.id!==id);
+  saveSessions();navHistory=[];showScreen('cal');renderCal();
+}
+
+/* ── 起動 ── */
+renderCal();
+</script>
+
+<!-- PWA manifest インライン生成 -->
+<script>
+(function(){
+  const manifest={
+    name:'Aタイプ小役カウンター',
+    short_name:'Aタイプカウンター',
+    description:'Aタイプスロット小役カウンター・データ記録ツール',
+    start_url:'/',
+    display:'standalone',
+    background_color:'#0f0f1a',
+    theme_color:'#1a1a2e',
+    orientation:'portrait',
+    icons:[
+      {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="%231a1a2e"/><text x="96" y="130" font-size="100" text-anchor="middle" fill="%237F77DD" font-family="sans-serif" font-weight="bold">A</text></svg>',sizes:'192x192',type:'image/svg+xml'},
+      {src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="%231a1a2e"/><text x="256" y="350" font-size="280" text-anchor="middle" fill="%237F77DD" font-family="sans-serif" font-weight="bold">A</text></svg>',sizes:'512x512',type:'image/svg+xml'}
+    ]
+  };
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('link');
+  link.rel='manifest';link.href=url;
+  document.head.appendChild(link);
+})();
+</script>
+
+</body>
+</html>
