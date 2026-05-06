@@ -248,12 +248,8 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
   <div class="counters" id="counters-grid"></div>
   <div class="est-mini">
     <div>
-      <div class="est-mini-lbl">現在の推測</div>
+      <div class="est-mini-lbl">現在の推測（参考）</div>
       <div class="est-mini-val" id="est-mini-val" style="color:rgba(255,255,255,0.25)">500G以上で推測開始</div>
-    </div>
-    <div style="text-align:right">
-      <div class="est-mini-lbl">最有力確率</div>
-      <div class="est-mini-prob" id="est-mini-prob">—</div>
     </div>
   </div>
   <div class="save-bar">
@@ -635,15 +631,11 @@ function calcPcts(s){
 }
 function updEstMini(){
   const el=document.getElementById('est-mini-val');
-  const ep=document.getElementById('est-mini-prob');
   if(cur.g<THRESHOLD){
-    el.textContent='500G以上で推測開始';el.style.color='rgba(255,255,255,0.25)';
-    if(ep)ep.textContent='—';return;
+    el.textContent='500G以上で推測開始';el.style.color='rgba(255,255,255,0.25)';return;
   }
-  const pcts=calcPcts(cur);
-  const bi=pcts.indexOf(Math.max(...pcts));
+  const bi=bestIdx(cur);
   el.textContent=SET_LABELS[bi]+'が有力';el.style.color=SET_COLORS[bi];
-  if(ep){ep.textContent=pcts[bi]+'%';ep.style.color=SET_COLORS[bi];}
 }
 
 /* ── 保存 ── */
@@ -686,13 +678,12 @@ function showDetail(id){
         <div class="ebar">
           <div class="ebl">${SET_LABELS[i]}</div>
           <div class="ebb"><div class="ebf" style="width:${p}%;background:${SET_COLORS[i]}"></div></div>
-          <div class="ebp">${p}%</div>
         </div>`).join('')}
       <div class="est-result" style="background:${SET_BG[bi]}">
         <div style="font-size:13px;font-weight:500;color:${SET_COLORS[bi]}">${SET_LABELS[bi]}が最有力</div>
         <div style="font-size:11px;color:${SET_COLORS[bi]};margin-top:3px;opacity:0.85">${SET_MSG[bi]}</div>
       </div>
-      <div class="ref-note">推測はBIG・REGのメーカー公表値およびブドウの業界推測値に基づく参考値です。設定を保証するものではありません。</div>
+      <div class="ref-note">推測はBIG・REGのメーカー公表値およびブドウの業界推測値に基づく傾向の参考表示です。具体的な設定を保証するものではありません。判断はご自身の責任でお願いします。</div>
     </div>
     <button class="del-btn" onclick="delSess('${s.id}')">この記録を削除</button>
   `;
