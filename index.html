@@ -921,20 +921,15 @@ function generateShareImage(highRate,total,totalG){
   const settingCounts=Array(6).fill(0);
   sessions.forEach(s=>{const bi=bestIdx(s);settingCounts[bi]++;});
   const maxCnt=Math.max(...settingCounts,1);
-
-  const BG='#0f0f1a';
-  const CARD='#1a1a2e';
-  const BORDER='rgba(255,255,255,0.08)';
   const COLORS=['#E24B4A','#D85A30','#BA7517','#639922','#1D9E75','#7F77DD'];
 
-  ctx.fillStyle=BG;
+  ctx.fillStyle='#0f0f1a';
   ctx.fillRect(0,0,W,H);
 
   const rr=(x,y,w,h,r,color)=>{
     ctx.fillStyle=color;
     ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.lineTo(x+w-r,y);
+    ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
     ctx.quadraticCurveTo(x+w,y,x+w,y+r);
     ctx.lineTo(x+w,y+h-r);
     ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
@@ -942,105 +937,83 @@ function generateShareImage(highRate,total,totalG){
     ctx.quadraticCurveTo(x,y+h,x,y+h-r);
     ctx.lineTo(x,y+r);
     ctx.quadraticCurveTo(x,y,x+r,y);
-    ctx.closePath();
-    ctx.fill();
+    ctx.closePath();ctx.fill();
   };
 
-  rr(40,40,W-80,H-80,24,CARD);
-
-  ctx.strokeStyle=BORDER;
+  rr(40,40,W-80,H-80,32,'#1a1a2e');
+  ctx.strokeStyle='rgba(255,255,255,0.06)';
   ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.moveTo(64,64);
-  ctx.lineTo(64+W-128,64);
-  ctx.stroke();
+  ctx.strokeRect(40,40,W-80,H-80);
 
-  ctx.fillStyle='rgba(127,119,221,0.15)';
-  ctx.beginPath();
-  ctx.arc(W/2,200,120,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle='#7F77DD';
-  ctx.font='500 28px sans-serif';
+  ctx.font='400 36px sans-serif';
   ctx.textAlign='center';
-  ctx.fillText('Aタイプ小役カウンター',W/2,100);
-
-  const emoji=highRate>=50?'🔥':highRate>=30?'✨':'📊';
-  ctx.font='500 120px sans-serif';
-  ctx.fillStyle='#fff';
-  ctx.fillText(emoji,W/2,220);
-
-  ctx.font='500 80px sans-serif';
-  ctx.fillStyle='#a89ff5';
-  ctx.fillText(highRate+'%',W/2,340);
-
-  ctx.font='400 30px sans-serif';
   ctx.fillStyle='rgba(255,255,255,0.45)';
-  ctx.fillText('設定6率（推測値）',W/2,390);
+  ctx.fillText('設定6率（推測値）',W/2,136);
 
-  const GRAPH_X=80,GRAPH_Y=440,GRAPH_W=W-160,ROW_H=72,LABEL_W=100;
+  ctx.font='500 176px sans-serif';
+  ctx.fillStyle='#a89ff5';
+  ctx.fillText(highRate+'%',W/2,324);
+
+  ctx.strokeStyle='rgba(255,255,255,0.08)';
+  ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(84,364);ctx.lineTo(W-84,364);ctx.stroke();
+
+  const GX=84,GY=392,GW=W-168,RH=76,LW=104;
   SET_LABELS.forEach((label,i)=>{
-    const y=GRAPH_Y+i*ROW_H;
+    const y=GY+i*RH;
     const cnt=settingCounts[i];
-    const barW=Math.round((cnt/maxCnt)*(GRAPH_W-LABEL_W-60));
+    const barW=cnt>0?Math.round((cnt/maxCnt)*(GW-LW-64)):0;
 
-    ctx.fillStyle='rgba(255,255,255,0.06)';
-    ctx.beginPath();
-    ctx.roundRect(GRAPH_X+LABEL_W,y+10,GRAPH_W-LABEL_W-60,46,6);
-    ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.05)';
+    ctx.beginPath();ctx.roundRect(GX+LW,y+12,GW-LW-64,48,8);ctx.fill();
 
     if(cnt>0){
       ctx.fillStyle=COLORS[i];
-      ctx.beginPath();
-      ctx.roundRect(GRAPH_X+LABEL_W,y+10,barW,46,6);
-      ctx.fill();
+      ctx.beginPath();ctx.roundRect(GX+LW,y+12,barW,48,8);ctx.fill();
     }
 
     ctx.fillStyle=COLORS[i];
-    ctx.font='500 26px sans-serif';
+    ctx.font='500 28px sans-serif';
     ctx.textAlign='right';
-    ctx.fillText(label,GRAPH_X+LABEL_W-16,y+42);
+    ctx.fillText(label,GX+LW-16,y+46);
 
     ctx.fillStyle='rgba(255,255,255,0.5)';
-    ctx.font='400 24px sans-serif';
+    ctx.font='400 26px sans-serif';
     ctx.textAlign='left';
-    ctx.fillText(cnt+'回',GRAPH_X+LABEL_W+barW+12,y+42);
+    ctx.fillText(cnt+'回',GX+LW+barW+16,y+46);
   });
 
-  const STAT_Y=H-220;
-  const stats=[
-    {label:'セッション数',val:total+'回'},
-    {label:'累計ゲーム数',val:totalG.toLocaleString()+'G'},
-  ];
-  stats.forEach((s,i)=>{
-    const x=80+i*(W/2-40);
-    rr(x,STAT_Y,(W-200)/2,100,14,'rgba(255,255,255,0.05)');
-    ctx.fillStyle='rgba(255,255,255,0.4)';
-    ctx.font='400 24px sans-serif';
+  ctx.strokeStyle='rgba(255,255,255,0.08)';
+  ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(84,856);ctx.lineTo(W-84,856);ctx.stroke();
+
+  const SY=876;
+  [{label:'セッション数',val:total+'回',x:84},{label:'累計ゲーム数',val:totalG.toLocaleString()+'G',x:W/2+20}].forEach(s=>{
+    rr(s.x,SY,(W-208)/2,92,16,'rgba(255,255,255,0.05)');
+    ctx.fillStyle='rgba(255,255,255,0.35)';
+    ctx.font='400 22px sans-serif';
     ctx.textAlign='center';
-    ctx.fillText(s.label,x+(W-200)/4,STAT_Y+36);
+    ctx.fillText(s.label,s.x+(W-208)/4,SY+32);
     ctx.fillStyle='#fff';
-    ctx.font='500 36px sans-serif';
-    ctx.fillText(s.val,x+(W-200)/4,STAT_Y+82);
+    ctx.font='500 34px sans-serif';
+    ctx.fillText(s.val,s.x+(W-208)/4,SY+72);
   });
 
   ctx.fillStyle='rgba(255,255,255,0.2)';
   ctx.font='400 22px sans-serif';
   ctx.textAlign='center';
-  ctx.fillText('#Aタイプカウンター  #ジャグラー  #スロット',W/2,H-80);
-  ctx.fillStyle='rgba(255,255,255,0.12)';
+  ctx.fillText('#ジャグラー  #スロット  #Aタイプカウンター',W/2,1008);
+  ctx.fillStyle='rgba(255,255,255,0.1)';
   ctx.font='400 18px sans-serif';
-  ctx.fillText('※推測に基づく参考値です',W/2,H-48);
+  ctx.fillText('※推測に基づく参考値です',W/2,1040);
 
   canvas.toBlob(blob=>{
     if(!blob){showToast('画像の生成に失敗したよ','#e74c3c');return;}
     const url=URL.createObjectURL(blob);
     const file=new File([blob],'atype_stats.png',{type:'image/png'});
-    const text='🔥 設定6率 '+highRate+'%（推測値）\n📊 '+total+'セッション / 累計'+totalG.toLocaleString()+'G\n#Aタイプカウンター #ジャグラー #スロット\n※推測に基づく参考値です';
+    const text='設定6率 '+highRate+'%（推測値）\n📊 '+total+'セッション / 累計'+totalG.toLocaleString()+'G\n#ジャグラー #スロット #Aタイプカウンター\n※推測に基づく参考値です';
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      navigator.share({title:'Aタイプ小役カウンター',text,files:[file]}).catch(()=>{
-        downloadImage(url);
-      });
+      navigator.share({title:'Aタイプ小役カウンター',text,files:[file]}).catch(()=>downloadImage(url));
     } else if(navigator.share){
       navigator.share({title:'Aタイプ小役カウンター',text}).catch(()=>{});
       downloadImage(url);
@@ -1050,6 +1023,7 @@ function generateShareImage(highRate,total,totalG){
     }
   },'image/png');
 }
+
 
 function downloadImage(url){
   const a=document.createElement('a');
