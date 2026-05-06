@@ -788,9 +788,10 @@ function renderStats(){
   // ── 機種別集計 ──
   const byMachine={};
   withEst.forEach(s=>{
-    if(!byMachine[s.machineId])byMachine[s.machineId]={sessions:[],totalG:0,high:0,mid:0,low:0};
+    if(!byMachine[s.machineId])byMachine[s.machineId]={sessions:[],totalG:0,counts:Array(6).fill(0),high:0,mid:0,low:0};
     byMachine[s.machineId].sessions.push(s);
     byMachine[s.machineId].totalG+=s.g||0;
+    byMachine[s.machineId].counts[s.estIdx]++;
     byMachine[s.machineId][s.grade]++;
   });
 
@@ -833,38 +834,29 @@ function renderStats(){
         </div>`).join('')}
     </div>
 
-    <!-- 設定6率ハイライト -->
-    <div style="background:linear-gradient(135deg,rgba(127,119,221,0.2),rgba(29,158,117,0.2));border:0.5px solid rgba(127,119,221,0.4);border-radius:14px;padding:16px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px">設定6率（推測値）</div>
-        <div style="font-size:36px;font-weight:500;color:#a89ff5;line-height:1">${highRate}<span style="font-size:20px">%</span></div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px">${highSess}回 / ${sessions.length}回中 ※推測に基づく参考値</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-size:28px;margin-bottom:4px">${highRate>=50?'🔥':highRate>=30?'✨':'📊'}</div>
-        <button onclick="shareStats(${highRate},${sessions.length},${totalG})" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer">シェア</button>
-      </div>
-    </div>
-
-    <!-- 設定傾向分布 -->
-    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.5px;margin-bottom:10px">設定傾向の分布（全セッション）</div>
+    <!-- 設定別分布 -->
+    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.5px;margin-bottom:10px">設定別の分布（推測値）</div>
     <div style="background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;margin-bottom:20px">
-      ${['high','mid','low'].map(g=>{
-        const cnt=withEst.filter(s=>s.grade===g).length;
-        const pct=sessions.length?Math.round(cnt/sessions.length*100):0;
-        return`<div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
-            <span style="color:${GRADE_COLOR[g]};font-weight:500">${GRADE_LABEL[g]}</span>
-            <span style="color:rgba(255,255,255,0.5)">${cnt}回</span>
-          </div>
-          <div style="height:18px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden">
-            <div style="height:100%;width:${pct}%;background:${GRADE_COLOR[g]};border-radius:4px;transition:width 0.6s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
-              ${pct>=10?`<span style="font-size:10px;color:#fff;font-weight:500">${pct}%</span>`:''}
-            </div>
-          </div>
-        </div>`;
-      }).join('')}
-      <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:4px;line-height:1.5">※推測は統計的な傾向の参考値です</div>
+      ${(()=>{
+        const settingCounts=Array(6).fill(0);
+        withEst.forEach(s=>settingCounts[s.estIdx]++);
+        const maxCnt=Math.max(...settingCounts,1);
+        return SET_LABELS.map((label,i)=>{
+          const cnt=settingCounts[i];
+          const pct=sessions.length?Math.round(cnt/sessions.length*100):0;
+          const barPct=Math.round(cnt/maxCnt*100);
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">'
+            +'<div style="font-size:11px;font-weight:500;width:36px;flex-shrink:0;color:'+SET_COLORS[i]+'">'+label+'</div>'
+            +'<div style="flex:1;height:20px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden">'
+            +'<div style="height:100%;width:'+barPct+'%;background:'+SET_COLORS[i]+';border-radius:4px;transition:width 0.6s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">'
+            +(barPct>=20?'<span style="font-size:10px;color:#fff;font-weight:500">'+cnt+'回</span>':'')
+            +'</div></div>'
+            +'<div style="font-size:11px;color:rgba(255,255,255,0.4);width:52px;text-align:right;flex-shrink:0">'+cnt+'回 '+pct+'%</div>'
+            +'</div>';
+        }).join('');
+      })()}
+      <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:6px;line-height:1.5">※推測は統計的な傾向の参考値です。設定を保証するものではありません。</div>
+      <button onclick="shareStats(${highRate},${sessions.length},${totalG})" style="width:100%;margin-top:12px;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer">📤 この統計をシェア</button>
     </div>
 
     <!-- 機種別 -->
@@ -880,17 +872,14 @@ function renderStats(){
             <div style="font-size:13px;font-weight:500;flex:1">${m?.name||id}</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.4)">${total}回 / 平均${avgGames.toLocaleString()}G</div>
           </div>
-          <div style="display:flex;gap:4px;height:12px;border-radius:4px;overflow:hidden">
-            ${['high','mid','low'].map(g=>{
-              const pct=Math.round(d[g]/total*100);
-              return pct>0?`<div style="width:${pct}%;background:${GRADE_COLOR[g]};height:100%" title="${GRADE_LABEL[g]} ${pct}%"></div>`:'';
+          <div style="display:flex;gap:2px;height:14px;border-radius:4px;overflow:hidden;margin-bottom:6px">
+            ${d.counts.map((cnt,i)=>{
+              const pct=Math.round(cnt/total*100);
+              return pct>0?'<div style="width:'+pct+'%;background:'+SET_COLORS[i]+';height:100%;position:relative" title="'+SET_LABELS[i]+' '+cnt+'回"></div>':'';
             }).join('')}
           </div>
-          <div style="display:flex;gap:10px;margin-top:6px">
-            ${['high','mid','low'].map(g=>{
-              const pct=Math.round(d[g]/total*100);
-              return`<div style="font-size:10px;color:${GRADE_COLOR[g]}">${GRADE_LABEL[g]} ${pct}%</div>`;
-            }).join('')}
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${d.counts.map((cnt,i)=>cnt>0?'<div style="font-size:10px;color:'+SET_COLORS[i]+'">'+SET_LABELS[i]+' '+cnt+'回</div>':'').join('')}
           </div>
         </div>`;
       }).join('')}
@@ -919,25 +908,154 @@ function renderStats(){
 
 /* ── シェア ── */
 function shareStats(highRate,total,totalG){
+  showToast('画像を生成中...','#7F77DD');
+  setTimeout(()=>generateShareImage(highRate,total,totalG),100);
+}
+
+function generateShareImage(highRate,total,totalG){
+  const W=1080,H=1080;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+
+  const settingCounts=Array(6).fill(0);
+  sessions.forEach(s=>{const bi=bestIdx(s);settingCounts[bi]++;});
+  const maxCnt=Math.max(...settingCounts,1);
+
+  const BG='#0f0f1a';
+  const CARD='#1a1a2e';
+  const BORDER='rgba(255,255,255,0.08)';
+  const COLORS=['#E24B4A','#D85A30','#BA7517','#639922','#1D9E75','#7F77DD'];
+
+  ctx.fillStyle=BG;
+  ctx.fillRect(0,0,W,H);
+
+  const rr=(x,y,w,h,r,color)=>{
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  rr(40,40,W-80,H-80,24,CARD);
+
+  ctx.strokeStyle=BORDER;
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(64,64);
+  ctx.lineTo(64+W-128,64);
+  ctx.stroke();
+
+  ctx.fillStyle='rgba(127,119,221,0.15)';
+  ctx.beginPath();
+  ctx.arc(W/2,200,120,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle='#7F77DD';
+  ctx.font='500 28px sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('Aタイプ小役カウンター',W/2,100);
+
   const emoji=highRate>=50?'🔥':highRate>=30?'✨':'📊';
-  const text=`${emoji} 俺の設定6率 ${highRate}% （推測値）
+  ctx.font='500 120px sans-serif';
+  ctx.fillStyle='#fff';
+  ctx.fillText(emoji,W/2,220);
 
-` +
-    `📊 ${total}セッション / 累計${totalG.toLocaleString()}G
-` +
-    `#Aタイプカウンター #ジャグラー #スロット
+  ctx.font='500 80px sans-serif';
+  ctx.fillStyle='#a89ff5';
+  ctx.fillText(highRate+'%',W/2,340);
 
-` +
-    `※推測に基づく参考値です`;
-  if(navigator.share){
-    navigator.share({title:'Aタイプ小役カウンター',text}).catch(()=>{});
-  } else {
-    navigator.clipboard?.writeText(text).then(()=>{
-      showToast('クリップボードにコピーしたよ！','#1D9E75');
-    }).catch(()=>{
-      showToast('シェアはスマホからお試しください','#BA7517');
-    });
-  }
+  ctx.font='400 30px sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.45)';
+  ctx.fillText('設定6率（推測値）',W/2,390);
+
+  const GRAPH_X=80,GRAPH_Y=440,GRAPH_W=W-160,ROW_H=72,LABEL_W=100;
+  SET_LABELS.forEach((label,i)=>{
+    const y=GRAPH_Y+i*ROW_H;
+    const cnt=settingCounts[i];
+    const barW=Math.round((cnt/maxCnt)*(GRAPH_W-LABEL_W-60));
+
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    ctx.beginPath();
+    ctx.roundRect(GRAPH_X+LABEL_W,y+10,GRAPH_W-LABEL_W-60,46,6);
+    ctx.fill();
+
+    if(cnt>0){
+      ctx.fillStyle=COLORS[i];
+      ctx.beginPath();
+      ctx.roundRect(GRAPH_X+LABEL_W,y+10,barW,46,6);
+      ctx.fill();
+    }
+
+    ctx.fillStyle=COLORS[i];
+    ctx.font='500 26px sans-serif';
+    ctx.textAlign='right';
+    ctx.fillText(label,GRAPH_X+LABEL_W-16,y+42);
+
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.font='400 24px sans-serif';
+    ctx.textAlign='left';
+    ctx.fillText(cnt+'回',GRAPH_X+LABEL_W+barW+12,y+42);
+  });
+
+  const STAT_Y=H-220;
+  const stats=[
+    {label:'セッション数',val:total+'回'},
+    {label:'累計ゲーム数',val:totalG.toLocaleString()+'G'},
+  ];
+  stats.forEach((s,i)=>{
+    const x=80+i*(W/2-40);
+    rr(x,STAT_Y,(W-200)/2,100,14,'rgba(255,255,255,0.05)');
+    ctx.fillStyle='rgba(255,255,255,0.4)';
+    ctx.font='400 24px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(s.label,x+(W-200)/4,STAT_Y+36);
+    ctx.fillStyle='#fff';
+    ctx.font='500 36px sans-serif';
+    ctx.fillText(s.val,x+(W-200)/4,STAT_Y+82);
+  });
+
+  ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.font='400 22px sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('#Aタイプカウンター  #ジャグラー  #スロット',W/2,H-80);
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  ctx.font='400 18px sans-serif';
+  ctx.fillText('※推測に基づく参考値です',W/2,H-48);
+
+  canvas.toBlob(blob=>{
+    if(!blob){showToast('画像の生成に失敗したよ','#e74c3c');return;}
+    const url=URL.createObjectURL(blob);
+    const file=new File([blob],'atype_stats.png',{type:'image/png'});
+    const text='🔥 設定6率 '+highRate+'%（推測値）\n📊 '+total+'セッション / 累計'+totalG.toLocaleString()+'G\n#Aタイプカウンター #ジャグラー #スロット\n※推測に基づく参考値です';
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({title:'Aタイプ小役カウンター',text,files:[file]}).catch(()=>{
+        downloadImage(url);
+      });
+    } else if(navigator.share){
+      navigator.share({title:'Aタイプ小役カウンター',text}).catch(()=>{});
+      downloadImage(url);
+    } else {
+      downloadImage(url);
+      navigator.clipboard?.writeText(text).catch(()=>{});
+    }
+  },'image/png');
+}
+
+function downloadImage(url){
+  const a=document.createElement('a');
+  a.href=url;a.download='atype_stats.png';a.click();
+  URL.revokeObjectURL(url);
+  showToast('画像をダウンロードしたよ！','#1D9E75');
 }
 
 /* ── 設定画面 ── */
