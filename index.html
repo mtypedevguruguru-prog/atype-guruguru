@@ -158,7 +158,10 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
 <div class="screen active" id="scr-cal">
   <div class="hdr">
     <div><div class="hdr-title">Aタイプ小役カウンター</div><div class="hdr-sub">データ記録ツール</div></div>
-    <button class="back-btn show" style="background:rgba(255,255,255,0.12);color:#fff;border:0.5px solid rgba(255,255,255,0.2)" onclick="goSettings()">設定</button>
+    <div style="display:flex;gap:6px">
+      <button class="back-btn show" style="background:rgba(255,255,255,0.12);color:#fff;border:0.5px solid rgba(255,255,255,0.2)" onclick="goStats()">統計</button>
+      <button class="back-btn show" style="background:rgba(255,255,255,0.12);color:#fff;border:0.5px solid rgba(255,255,255,0.2)" onclick="goSettings()">設定</button>
+    </div>
   </div>
   <div class="cal-wrap">
     <div class="cal-nav">
@@ -265,6 +268,15 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
     <button class="back-btn show" onclick="goBack()">← 戻る</button>
   </div>
   <div class="detail-wrap" id="detail-body"></div>
+</div>
+
+<!-- 統計画面 -->
+<div class="screen" id="scr-stats">
+  <div class="hdr">
+    <div><div class="hdr-title">統計ダッシュボード</div><div class="hdr-sub" id="stats-sub"></div></div>
+    <button class="back-btn show" onclick="goBack()">← 戻る</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:14px 14px 40px" id="stats-body"></div>
 </div>
 
 <!-- 設定画面 -->
@@ -741,6 +753,191 @@ function resumeDraft(){
 function discardDraft(){
   clearDraft();
   document.getElementById('resume-banner').style.display='none';
+}
+
+/* ── 統計ダッシュボード ── */
+function goStats(){
+  document.getElementById('stats-sub').textContent=sessions.length?sessions.length+'件の記録':'記録なし';
+  renderStats();
+  navHistory=[];push('stats');
+}
+
+function renderStats(){
+  const body=document.getElementById('stats-body');
+
+  // 全セッションの設定推測を内部計算
+  const withEst=sessions.map(s=>{
+    const scores=calcScores(s);
+    const tot=scores.reduce((a,b)=>a+b,0);
+    const pcts=scores.map(v=>v/tot*100);
+    const bi=pcts.indexOf(Math.max(...pcts));
+    const grade=bi<=1?'low':bi<=3?'mid':'high';
+    return{...s,estIdx:bi,grade};
+  });
+
+  // ── サマリカード ──
+  const totalG=sessions.reduce((a,s)=>a+(s.g||0),0);
+  const avgG=sessions.length?Math.round(totalG/sessions.length):0;
+  const highSess=withEst.filter(s=>s.grade==='high').length;
+  const highRate=sessions.length?Math.round(highSess/sessions.length*100):0;
+  const machineCount={};
+  sessions.forEach(s=>{machineCount[s.machineId]=(machineCount[s.machineId]||0)+1;});
+  const topMachineId=Object.entries(machineCount).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const topMachine=getMachine(topMachineId);
+
+  // ── 機種別集計 ──
+  const byMachine={};
+  withEst.forEach(s=>{
+    if(!byMachine[s.machineId])byMachine[s.machineId]={sessions:[],totalG:0,high:0,mid:0,low:0};
+    byMachine[s.machineId].sessions.push(s);
+    byMachine[s.machineId].totalG+=s.g||0;
+    byMachine[s.machineId][s.grade]++;
+  });
+
+  // ── 月別集計 ──
+  const byMonth={};
+  sessions.forEach(s=>{
+    const ym=s.date?.slice(0,7)||'不明';
+    byMonth[ym]=(byMonth[ym]||0)+1;
+  });
+  const months=Object.keys(byMonth).sort().slice(-6);
+  const maxMonth=Math.max(...months.map(m=>byMonth[m]));
+
+  // ── グレードラベル ──
+  const GRADE_LABEL={high:'高設定寄り',mid:'中間',low:'低設定寄り'};
+  const GRADE_COLOR={high:'#1D9E75',mid:'#BA7517',low:'#E24B4A'};
+  const GRADE_BG={high:'rgba(29,158,117,0.15)',mid:'rgba(186,117,23,0.15)',low:'rgba(226,75,74,0.15)'};
+
+  if(!sessions.length){
+    body.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:12px">
+      <div style="font-size:40px">📊</div>
+      <div style="font-size:15px;font-weight:500">まだ記録がないよ</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.4);text-align:center;line-height:1.6">カウントを保存すると<br>ここに統計が表示されるよ</div>
+    </div>`;
+    return;
+  }
+
+  body.innerHTML=`
+    <!-- サマリ -->
+    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.5px;margin-bottom:10px">累計サマリ</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
+      ${[
+        {label:'総セッション数',val:sessions.length+'回'},
+        {label:'累計ゲーム数',val:totalG.toLocaleString()+'G'},
+        {label:'平均ゲーム数',val:avgG.toLocaleString()+'G'},
+        {label:'最多機種',val:topMachine?.name||'—'},
+      ].map(c=>`
+        <div style="background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px">
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px">${c.label}</div>
+          <div style="font-size:16px;font-weight:500">${c.val}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- 設定6率ハイライト -->
+    <div style="background:linear-gradient(135deg,rgba(127,119,221,0.2),rgba(29,158,117,0.2));border:0.5px solid rgba(127,119,221,0.4);border-radius:14px;padding:16px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:4px">設定6率（推測値）</div>
+        <div style="font-size:36px;font-weight:500;color:#a89ff5;line-height:1">${highRate}<span style="font-size:20px">%</span></div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px">${highSess}回 / ${sessions.length}回中 ※推測に基づく参考値</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:28px;margin-bottom:4px">${highRate>=50?'🔥':highRate>=30?'✨':'📊'}</div>
+        <button onclick="shareStats(${highRate},${sessions.length},${totalG})" style="background:#534AB7;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer">シェア</button>
+      </div>
+    </div>
+
+    <!-- 設定傾向分布 -->
+    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.5px;margin-bottom:10px">設定傾向の分布（全セッション）</div>
+    <div style="background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;margin-bottom:20px">
+      ${['high','mid','low'].map(g=>{
+        const cnt=withEst.filter(s=>s.grade===g).length;
+        const pct=sessions.length?Math.round(cnt/sessions.length*100):0;
+        return`<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+            <span style="color:${GRADE_COLOR[g]};font-weight:500">${GRADE_LABEL[g]}</span>
+            <span style="color:rgba(255,255,255,0.5)">${cnt}回</span>
+          </div>
+          <div style="height:18px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${GRADE_COLOR[g]};border-radius:4px;transition:width 0.6s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+              ${pct>=10?`<span style="font-size:10px;color:#fff;font-weight:500">${pct}%</span>`:''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:4px;line-height:1.5">※推測は統計的な傾向の参考値です</div>
+    </div>
+
+    <!-- 機種別 -->
+    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.5px;margin-bottom:10px">機種別の記録</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      ${Object.entries(byMachine).sort((a,b)=>b[1].sessions.length-a[1].sessions.length).map(([id,d])=>{
+        const m=getMachine(id);
+        const total=d.sessions.length;
+        const avgGames=Math.round(d.totalG/total);
+        return`<div style="background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${m?.color||'#888'};flex-shrink:0"></div>
+            <div style="font-size:13px;font-weight:500;flex:1">${m?.name||id}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">${total}回 / 平均${avgGames.toLocaleString()}G</div>
+          </div>
+          <div style="display:flex;gap:4px;height:12px;border-radius:4px;overflow:hidden">
+            ${['high','mid','low'].map(g=>{
+              const pct=Math.round(d[g]/total*100);
+              return pct>0?`<div style="width:${pct}%;background:${GRADE_COLOR[g]};height:100%" title="${GRADE_LABEL[g]} ${pct}%"></div>`:'';
+            }).join('')}
+          </div>
+          <div style="display:flex;gap:10px;margin-top:6px">
+            ${['high','mid','low'].map(g=>{
+              const pct=Math.round(d[g]/total*100);
+              return`<div style="font-size:10px;color:${GRADE_COLOR[g]}">${GRADE_LABEL[g]} ${pct}%</div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- 月別推移 -->
+    <div style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);letter-spacing:0.5px;margin-bottom:10px">月別セッション数（直近6ヶ月）</div>
+    <div style="background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;margin-bottom:20px">
+      ${months.length?months.map(ym=>{
+        const cnt=byMonth[ym];
+        const pct=maxMonth?Math.round(cnt/maxMonth*100):0;
+        const [y,m]=ym.split('-');
+        return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.5);width:44px;flex-shrink:0">${parseInt(m)}月</div>
+          <div style="flex:1;height:20px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:#534AB7;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+              ${pct>=15?`<span style="font-size:10px;color:#fff;font-weight:500">${cnt}</span>`:''}
+            </div>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);width:24px;text-align:right">${cnt}</div>
+        </div>`;
+      }).join(''):'<div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;padding:8px 0">データなし</div>'}
+    </div>
+  `;
+}
+
+/* ── シェア ── */
+function shareStats(highRate,total,totalG){
+  const emoji=highRate>=50?'🔥':highRate>=30?'✨':'📊';
+  const text=`${emoji} 俺の設定6率 ${highRate}% （推測値）
+
+` +
+    `📊 ${total}セッション / 累計${totalG.toLocaleString()}G
+` +
+    `#Aタイプカウンター #ジャグラー #スロット
+
+` +
+    `※推測に基づく参考値です`;
+  if(navigator.share){
+    navigator.share({title:'Aタイプ小役カウンター',text}).catch(()=>{});
+  } else {
+    navigator.clipboard?.writeText(text).then(()=>{
+      showToast('クリップボードにコピーしたよ！','#1D9E75');
+    }).catch(()=>{
+      showToast('シェアはスマホからお試しください','#BA7517');
+    });
+  }
 }
 
 /* ── 設定画面 ── */
