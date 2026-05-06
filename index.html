@@ -125,9 +125,28 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
 
 .flash{animation:fl 0.15s ease-out}
 @keyframes fl{0%{opacity:0.2}100%{opacity:1}}
+
+#bonus-overlay{position:fixed;inset:0;pointer-events:none;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;opacity:0;transition:opacity 0.3s}
+#bonus-overlay.show{opacity:1}
+.bonus-text{font-size:56px;font-weight:500;letter-spacing:2px;text-align:center;line-height:1.1;text-shadow:0 0 30px currentColor}
+.bonus-sub{font-size:19px;font-weight:500;opacity:0.85;letter-spacing:1px}
+.bonus-count{font-size:14px;opacity:0.55;margin-top:2px}
+#particles-canvas{position:fixed;inset:0;pointer-events:none;z-index:9998}
+#screen-flash{position:fixed;inset:0;pointer-events:none;z-index:9997;opacity:0}
+@keyframes bonus-pop{0%{transform:scale(0.4);opacity:0}50%{transform:scale(1.2)}75%{transform:scale(0.92)}100%{transform:scale(1);opacity:1}}
+@keyframes flash-out{0%{opacity:0.55}100%{opacity:0}}
 </style>
 </head>
 <body>
+
+<!-- ボーナス演出オーバーレイ -->
+<canvas id="particles-canvas"></canvas>
+<div id="screen-flash"></div>
+<div id="bonus-overlay">
+  <div class="bonus-text" id="bonus-text"></div>
+  <div class="bonus-sub" id="bonus-sub"></div>
+  <div class="bonus-count" id="bonus-count"></div>
+</div>
 
 <!-- カレンダー画面 -->
 <div class="screen active" id="scr-cal">
@@ -400,7 +419,72 @@ function cnt(k){
   const el=document.getElementById('n-'+k);
   if(el){el.textContent=cur.counts[k];el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}
   updProbs();updEstMini();
-  if(navigator.vibrate)navigator.vibrate(20);
+  if(k==='bg'){triggerBonus('BIG','BIG BONUS!!','#BA7517',cur.counts[k]);}
+  else if(k==='r'){triggerBonus('REG','REGULAR BONUS','#7F77DD',cur.counts[k]);}
+  else{if(navigator.vibrate)navigator.vibrate(20);}
+}
+
+/* ── ボーナス演出 ── */
+function triggerBonus(type,label,color,count){
+  if(navigator.vibrate)navigator.vibrate(type==='bg'?[80,40,80,40,120]:[60,30,100]);
+  const overlay=document.getElementById('bonus-overlay');
+  const bt=document.getElementById('bonus-text');
+  const bs=document.getElementById('bonus-sub');
+  const bc=document.getElementById('bonus-count');
+  const sf=document.getElementById('screen-flash');
+  bt.textContent=type==='bg'?'BIG!!':'REG!!';
+  bt.style.color=color;
+  bs.textContent=label;
+  bs.style.color=color;
+  bc.textContent='通算'+count+'回目';
+  bt.style.animation='none';void bt.offsetWidth;bt.style.animation='bonus-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards';
+  overlay.classList.add('show');
+  sf.style.background=color;
+  sf.style.animation='none';void sf.offsetWidth;sf.style.animation='flash-out 0.4s ease-out forwards';
+  launchParticles(color,type==='bg'?80:50);
+  clearTimeout(window._bonusTimer);
+  window._bonusTimer=setTimeout(()=>overlay.classList.remove('show'),type==='bg'?2200:1800);
+}
+
+function launchParticles(color,count){
+  const canvas=document.getElementById('particles-canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const cx=canvas.width/2,cy=canvas.height/2;
+  const particles=[];
+  const colors=[color,'#fff','#FFD700',color+'bb'];
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=4+Math.random()*10;
+    particles.push({
+      x:cx,y:cy,
+      vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-6,
+      size:4+Math.random()*6,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      alpha:1,rot:Math.random()*360,rotV:(Math.random()-0.5)*8,
+      shape:Math.random()>0.4?'rect':'circle'
+    });
+  }
+  let frame;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive=false;
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.vy+=0.35;
+      p.vx*=0.98;p.alpha-=0.018;p.rot+=p.rotV;
+      if(p.alpha<=0)return;
+      alive=true;
+      ctx.save();ctx.globalAlpha=Math.max(0,p.alpha);
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color;
+      if(p.shape==='rect'){ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);}
+      else{ctx.beginPath();ctx.arc(0,0,p.size/2,0,Math.PI*2);ctx.fill();}
+      ctx.restore();
+    });
+    if(alive){frame=requestAnimationFrame(draw);}
+    else{ctx.clearRect(0,0,canvas.width,canvas.height);}
+  }
+  cancelAnimationFrame(frame);draw();
 }
 function dc(k){
   if((cur.counts[k]||0)>0){
