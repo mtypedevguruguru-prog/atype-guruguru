@@ -164,6 +164,17 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
       <div class="sess-title" id="sel-date-label"></div>
       <div id="sessions-list"></div>
     </div>
+    <div id="resume-banner" style="display:none;margin:8px 14px 0;background:rgba(127,119,221,0.15);border:0.5px solid #7F77DD;border-radius:12px;padding:12px 14px;cursor:pointer" onclick="resumeDraft()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:500;color:#a89ff5">中断中のカウントがあるよ</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4)" id="resume-time"></div>
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.5)" id="resume-info"></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="event.stopPropagation();resumeDraft()" style="flex:1;padding:8px;background:#534AB7;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer">続きから再開</button>
+        <button onclick="event.stopPropagation();discardDraft()" style="padding:8px 14px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;font-size:13px;cursor:pointer">破棄</button>
+      </div>
+    </div>
     <button class="new-btn" onclick="goNew()">＋ 新規カウント開始</button>
   </div>
 </div>
@@ -267,6 +278,7 @@ const SET_BG=['rgba(226,75,74,0.15)','rgba(216,90,48,0.15)','rgba(186,117,23,0.1
 const SET_MSG=['低設定の可能性が高い。見切りを検討しよう','低設定寄り。もう少し様子見して','中間設定の可能性。慎重に判断して','中間〜高設定。続行の価値あり','高設定の可能性が高い。粘る価値あり','高設定が最有力。このまま続けよう'];
 const THRESHOLD=500;
 const STORAGE_KEY='atype_sessions_v1';
+const DRAFT_KEY='atype_draft_v1';
 
 /* ── ステート ── */
 let sessions=[];
@@ -280,6 +292,7 @@ const today=new Date();
 const todayStr=fmtDS(today);
 selDate=todayStr;
 loadSessions();
+checkDraft();
 
 /* ── localStorage ── */
 function loadSessions(){
@@ -287,6 +300,18 @@ function loadSessions(){
 }
 function saveSessions(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(sessions));}catch(e){}
+}
+function saveDraft(){
+  try{
+    cur.savedAt=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+    localStorage.setItem(DRAFT_KEY,JSON.stringify(cur));
+  }catch(e){}
+}
+function loadDraft(){
+  try{const d=localStorage.getItem(DRAFT_KEY);return d?JSON.parse(d):null;}catch(e){return null;}
+}
+function clearDraft(){
+  try{localStorage.removeItem(DRAFT_KEY);}catch(e){}
 }
 
 /* ── ユーティリティ ── */
@@ -308,6 +333,7 @@ function confirmDiscard(){
   if(cur.g>0||Object.values(cur.counts).some(v=>v>0)){
     if(!confirm('カウントデータを破棄しますか？'))return;
   }
+  clearDraft();
   navHistory=[];showScreen('cal');
 }
 
@@ -388,7 +414,7 @@ function startCount(){
   cur.g=0;
   document.getElementById('count-title').textContent=cur.name;
   document.getElementById('count-sub').textContent=m.name;
-  renderCountGrid();refreshUI();push('count');
+  renderCountGrid();refreshUI();saveDraft();push('count');
 }
 function renderCountGrid(){
   const m=getMachine(cur.machineId);
@@ -412,7 +438,7 @@ function ag(n){
   document.getElementById('g-progress').style.width=pct+'%';
   const rem=Math.max(0,THRESHOLD-cur.g);
   document.getElementById('g-prog-lbl').textContent=rem>0?`推測開始まで${rem}G`:'推測中';
-  updProbs();updEstMini();
+  updProbs();updEstMini();saveDraft();
 }
 function cnt(k){
   cur.counts[k]=(cur.counts[k]||0)+1;
@@ -422,6 +448,7 @@ function cnt(k){
   if(k==='bg'){triggerBonus('BIG','BIG BONUS!!','#BA7517',cur.counts[k]);}
   else if(k==='r'){triggerBonus('REG','REGULAR BONUS','#7F77DD',cur.counts[k]);}
   else{if(navigator.vibrate)navigator.vibrate(20);}
+  saveDraft();
 }
 
 /* ── ボーナス演出 ── */
@@ -544,6 +571,7 @@ function saveSession(){
   };
   sessions.push(s);
   saveSessions();
+  clearDraft();
   selDate=cur.date;navHistory=[];showScreen('cal');renderCal();
 }
 
@@ -590,6 +618,37 @@ function delSess(id){
   if(!confirm('この記録を削除しますか？'))return;
   sessions=sessions.filter(s=>s.id!==id);
   saveSessions();navHistory=[];showScreen('cal');renderCal();
+}
+
+/* ── 下書き復元 ── */
+function checkDraft(){
+  const d=loadDraft();
+  if(!d||!d.machineId)return;
+  const banner=document.getElementById('resume-banner');
+  const info=document.getElementById('resume-info');
+  const time=document.getElementById('resume-time');
+  const m=getMachine(d.machineId);
+  if(!m)return;
+  const total=Object.values(d.counts||{}).reduce((a,b)=>a+b,0);
+  info.textContent=`${d.name} ／ ${m.name} ／ ${d.g}G ／ カウント計${total}回`;
+  time.textContent=d.savedAt||'';
+  banner.style.display='block';
+}
+function resumeDraft(){
+  const d=loadDraft();
+  if(!d)return;
+  cur=d;
+  const m=getMachine(cur.machineId);
+  if(!m)return;
+  document.getElementById('count-title').textContent=cur.name;
+  document.getElementById('count-sub').textContent=m.name;
+  document.getElementById('resume-banner').style.display='none';
+  renderCountGrid();refreshUI();
+  navHistory=[];push('count');
+}
+function discardDraft(){
+  clearDraft();
+  document.getElementById('resume-banner').style.display='none';
 }
 
 /* ── 起動 ── */
