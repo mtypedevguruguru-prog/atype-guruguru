@@ -148,6 +148,9 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
   <div class="bonus-count" id="bonus-count"></div>
 </div>
 
+<!-- トースト通知 -->
+<div id="toast" style="position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%) translateY(20px);background:#222236;border:0.5px solid rgba(255,255,255,0.15);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:500;color:#fff;z-index:9999;opacity:0;transition:opacity 0.25s,transform 0.25s;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 40px);text-align:center"></div>
+
 <!-- カレンダー画面 -->
 <div class="screen active" id="scr-cal">
   <div class="hdr">
@@ -296,7 +299,7 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
       <button onclick="deleteAllData()" style="width:100%;padding:11px;background:none;border:0.5px solid rgba(231,76,60,0.5);color:#e74c3c;border-radius:10px;font-size:14px;cursor:pointer">全データを削除する</button>
     </div>
 
-    <div id="import-result" style="display:none;margin-top:14px;padding:12px;border-radius:10px;font-size:13px;text-align:center"></div>
+
   </div>
 </div>
 
@@ -739,9 +742,9 @@ function importJSON(event){
       const newItems=imported.filter(s=>s.id&&!existingIds.has(s.id));
       sessions=[...sessions,...newItems];
       saveSessions();
-      showImportResult(`${newItems.length}件の記録をインポートしたよ。（重複${imported.length-newItems.length}件はスキップ）`,'#1D9E75');
       goSettings();
       renderCal();
+      setTimeout(()=>showImportResult(`${newItems.length}件インポート完了！（重複${imported.length-newItems.length}件スキップ）`,'#1D9E75'),100);
     }catch(err){
       showImportResult('読み込みに失敗したよ。正しいバックアップファイルか確認してね。','#e74c3c');
     }
@@ -750,13 +753,20 @@ function importJSON(event){
   event.target.value='';
 }
 function showImportResult(msg,color){
-  const el=document.getElementById('import-result');
+  showToast(msg,color);
+}
+function showToast(msg,color){
+  const el=document.getElementById('toast');
   el.textContent=msg;
-  el.style.display='block';
-  el.style.background=color+'22';
-  el.style.border='0.5px solid '+color+'55';
-  el.style.color=color;
-  setTimeout(()=>el.style.display='none',4000);
+  el.style.borderColor=color+'66';
+  el.style.color=color||'#fff';
+  el.style.opacity='1';
+  el.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(()=>{
+    el.style.opacity='0';
+    el.style.transform='translateX(-50%) translateY(10px)';
+  },3000);
 }
 function deleteAllData(){
   if(!confirm('全ての記録を削除しますか？この操作は元に戻せません。'))return;
