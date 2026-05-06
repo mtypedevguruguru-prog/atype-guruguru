@@ -432,7 +432,7 @@ function triggerBonus(type,label,color,count){
   const bs=document.getElementById('bonus-sub');
   const bc=document.getElementById('bonus-count');
   const sf=document.getElementById('screen-flash');
-  bt.textContent=type==='bg'?'BIG!!':'REG!!';
+  bt.textContent=type==='BIG'?'BIG!!':'REG!!';
   bt.style.color=color;
   bs.textContent=label;
   bs.style.color=color;
@@ -441,9 +441,9 @@ function triggerBonus(type,label,color,count){
   overlay.classList.add('show');
   sf.style.background=color;
   sf.style.animation='none';void sf.offsetWidth;sf.style.animation='flash-out 0.4s ease-out forwards';
-  launchParticles(color,type==='bg'?80:50);
+  launchParticles(color,type==='BIG'?80:50);
   clearTimeout(window._bonusTimer);
-  window._bonusTimer=setTimeout(()=>overlay.classList.remove('show'),type==='bg'?2200:1800);
+  window._bonusTimer=setTimeout(()=>overlay.classList.remove('show'),type==='BIG'?2200:1800);
 }
 
 function launchParticles(color,count){
