@@ -268,7 +268,7 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
       </div>
       <div style="padding:14px">
         <div style="font-size:13px;font-weight:500;margin-bottom:3px">JSONからインポート</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;margin-bottom:12px">エクスポートしたJSONファイルを読み込む。既存の記録と統合されるよ。</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);line-height:1.5;margin-bottom:12px">エクスポートしたJSONファイルで全データを上書き復元する。現在の記録は削除されるので事前にエクスポート推奨。</div>
         <label style="display:block;width:100%;padding:11px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.2);border-radius:10px;font-size:14px;font-weight:500;text-align:center;cursor:pointer;color:#fff">
           JSONを読み込む
           <input type="file" accept=".json" onchange="importJSON(event)" style="display:none">
@@ -739,13 +739,12 @@ function importJSON(event){
       const data=JSON.parse(e.target.result);
       const imported=data.sessions||data;
       if(!Array.isArray(imported))throw new Error('フォーマットエラー');
-      const existingIds=new Set(sessions.map(s=>s.id));
-      const newItems=imported.filter(s=>s.id&&!existingIds.has(s.id));
-      sessions=[...sessions,...newItems];
+      if(!confirm(`${imported.length}件の記録で全データを上書きします。現在の記録は削除されます。よろしいですか？`))return;
+      sessions=imported.filter(s=>s.id);
       saveSessions();
       goSettings();
       renderCal();
-      showImportResult(`${newItems.length}件インポート完了！（重複${imported.length-newItems.length}件はスキップ）`,'#1D9E75');
+      showImportResult(`${sessions.length}件の記録を復元したよ。`,'#1D9E75');
     }catch(err){
       showImportResult('読み込みに失敗したよ。正しいバックアップファイルか確認してね。','#e74c3c');
     }
