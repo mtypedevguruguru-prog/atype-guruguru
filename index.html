@@ -273,6 +273,7 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
           JSONを読み込む
           <input type="file" accept=".json" onchange="importJSON(event)" style="display:none">
         </label>
+        <div id="import-result" style="display:none;margin-top:10px;padding:11px 14px;border-radius:10px;font-size:13px;font-weight:500;text-align:center;line-height:1.5"></div>
       </div>
     </div>
 
@@ -744,7 +745,7 @@ function importJSON(event){
       saveSessions();
       goSettings();
       renderCal();
-      setTimeout(()=>showImportResult(`${newItems.length}件インポート完了！（重複${imported.length-newItems.length}件スキップ）`,'#1D9E75'),100);
+      showImportResult(`${newItems.length}件インポート完了！（重複${imported.length-newItems.length}件はスキップ）`,'#1D9E75');
     }catch(err){
       showImportResult('読み込みに失敗したよ。正しいバックアップファイルか確認してね。','#e74c3c');
     }
@@ -753,7 +754,15 @@ function importJSON(event){
   event.target.value='';
 }
 function showImportResult(msg,color){
-  showToast(msg,color);
+  const el=document.getElementById('import-result');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.display='block';
+  el.style.background=color+'22';
+  el.style.border='0.5px solid '+color+'55';
+  el.style.color=color;
+  clearTimeout(window._importTimer);
+  window._importTimer=setTimeout(()=>el.style.display='none',5000);
 }
 function showToast(msg,color){
   const el=document.getElementById('toast');
