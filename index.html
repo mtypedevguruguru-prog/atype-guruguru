@@ -26,7 +26,8 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
 .back-btn.show{display:block}
 
 /* カレンダー */
-.cal-wrap{flex:1;overflow-y:auto;background:#0f0f1a}
+.cal-wrap{flex:1;overflow-y:auto;background:#0f0f1a;min-height:0}
+.new-btn-wrap{flex-shrink:0;padding:8px 14px;padding-bottom:calc(8px + env(safe-area-inset-bottom,8px));background:#0f0f1a;border-top:0.5px solid rgba(255,255,255,0.06)}
 .cal-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1a1a2e;border-bottom:0.5px solid rgba(255,255,255,0.08)}
 .cal-nav button{background:rgba(255,255,255,0.1);border:0.5px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 12px;font-size:13px;cursor:pointer;color:#fff}
 .cal-month{font-size:14px;font-weight:500}
@@ -48,7 +49,7 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
 .sess-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sess-meta{font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px}
 .sess-badge{font-size:11px;font-weight:500;padding:3px 10px;border-radius:999px;flex-shrink:0}
-.new-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 14px;margin-bottom:calc(24px + env(safe-area-inset-bottom,16px));padding:13px;border-radius:12px;background:#534AB7;color:#fff;font-size:15px;font-weight:500;cursor:pointer;border:none;width:calc(100% - 28px)}
+.new-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin:0;padding:13px;border-radius:12px;background:#534AB7;color:#fff;font-size:15px;font-weight:500;cursor:pointer;border:none;width:100%}
 .new-btn:active{opacity:0.85}
 .empty-msg{text-align:center;padding:24px 0;font-size:12px;color:rgba(255,255,255,0.3)}
 
@@ -94,12 +95,14 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
 .cbtn{width:100%;padding:11px 0;border-radius:10px;border:none;font-size:15px;font-weight:500;cursor:pointer;color:#fff}
 .cbtn:active{opacity:0.8;transform:scale(0.96)}
 .btn-b{background:#639922}.btn-c{background:#D85A30}.btn-r{background:#534AB7}.btn-bg{background:#BA7517}.btn-mc{background:#993556}
-.mrow{display:flex;justify-content:flex-end}
-.mminus{background:none;border:0.5px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.5);border-radius:4px;font-size:10px;padding:2px 8px;cursor:pointer}
+.mrow{display:flex;width:100%}
+.mminus{width:100%;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);border-radius:6px;font-size:12px;padding:5px 0;cursor:pointer;text-align:center}
+.mminus:active{background:rgba(255,255,255,0.12)}
 
-.est-mini{padding:9px 14px;background:#0d0d22;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-top:0.5px solid rgba(255,255,255,0.06)}
-.est-mini-lbl{font-size:10px;color:rgba(255,255,255,0.3)}
-.est-mini-val{font-size:13px;font-weight:500}
+.est-mini{padding:10px 14px;background:#0d0d22;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-top:0.5px solid rgba(255,255,255,0.1)}
+.est-mini-lbl{font-size:11px;color:rgba(255,255,255,0.4)}
+.est-mini-val{font-size:16px;font-weight:500}
+.est-mini-prob{font-size:11px;color:rgba(255,255,255,0.35);margin-top:1px}
 .save-bar{background:#1a1a2e;padding:10px 14px;padding-bottom:calc(16px + env(safe-area-inset-bottom,16px));display:flex;gap:8px;flex-shrink:0}
 .save-btn{flex:1;padding:12px;background:#534AB7;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer}
 .save-btn:active{opacity:0.85}
@@ -179,6 +182,8 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
         <button onclick="event.stopPropagation();discardDraft()" style="padding:8px 14px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;font-size:13px;cursor:pointer">破棄</button>
       </div>
     </div>
+  </div>
+  <div class="new-btn-wrap">
     <button class="new-btn" onclick="goNew()">＋ 新規カウント開始</button>
   </div>
 </div>
@@ -202,7 +207,15 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
 <!-- カウント画面 -->
 <div class="screen" id="scr-count">
   <div class="hdr">
-    <div><div class="hdr-title" id="count-title">カウント中</div><div class="hdr-sub" id="count-sub"></div></div>
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+      <div style="min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="hdr-title" id="count-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px"></div>
+          <button onclick="editSessionName()" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:11px;padding:2px 6px;cursor:pointer;flex-shrink:0;border:0.5px solid rgba(255,255,255,0.2);border-radius:4px">編集</button>
+        </div>
+        <div class="hdr-sub" id="count-sub"></div>
+      </div>
+    </div>
     <button class="back-btn show" onclick="confirmDiscard()">破棄</button>
   </div>
   <div class="game-zone">
@@ -234,8 +247,14 @@ input{-webkit-user-select:auto;user-select:auto;touch-action:auto}
   </div>
   <div class="counters" id="counters-grid"></div>
   <div class="est-mini">
-    <div class="est-mini-lbl">現在の推測</div>
-    <div class="est-mini-val" id="est-mini-val" style="color:rgba(255,255,255,0.25)">500G以上で推測開始</div>
+    <div>
+      <div class="est-mini-lbl">現在の推測</div>
+      <div class="est-mini-val" id="est-mini-val" style="color:rgba(255,255,255,0.25)">500G以上で推測開始</div>
+    </div>
+    <div style="text-align:right">
+      <div class="est-mini-lbl">最有力確率</div>
+      <div class="est-mini-prob" id="est-mini-prob">—</div>
+    </div>
   </div>
   <div class="save-bar">
     <button class="discard-btn" onclick="confirmDiscard()">破棄</button>
@@ -435,7 +454,10 @@ function renderSessions(){
     return`<div class="sess-item" onclick="showDetail('${s.id}')">
       <div style="width:8px;height:8px;border-radius:50%;background:${mach?.color||'#888'};flex-shrink:0"></div>
       <div class="sess-info">
-        <div class="sess-name">${s.name}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="sess-name" style="flex:1">${s.name}</div>
+          <button onclick="event.stopPropagation();editSessName('${s.id}')" style="background:none;border:0.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);border-radius:4px;font-size:10px;padding:2px 7px;cursor:pointer;flex-shrink:0">編集</button>
+        </div>
         <div class="sess-meta">${mach?.name||''} ／ ${s.g}G ／ BIG:${s.counts.bg||0} ／ REG:${s.counts.r||0}</div>
       </div>
       <div class="sess-badge" style="background:${SET_BG[bi]};color:${SET_COLORS[bi]}">${s.g>=THRESHOLD?SET_LABELS[bi]:'参考値'}</div>
@@ -613,9 +635,15 @@ function calcPcts(s){
 }
 function updEstMini(){
   const el=document.getElementById('est-mini-val');
-  if(cur.g<THRESHOLD){el.textContent='500G以上で推測開始';el.style.color='rgba(255,255,255,0.25)';return}
-  const bi=bestIdx(cur);
+  const ep=document.getElementById('est-mini-prob');
+  if(cur.g<THRESHOLD){
+    el.textContent='500G以上で推測開始';el.style.color='rgba(255,255,255,0.25)';
+    if(ep)ep.textContent='—';return;
+  }
+  const pcts=calcPcts(cur);
+  const bi=pcts.indexOf(Math.max(...pcts));
   el.textContent=SET_LABELS[bi]+'が有力';el.style.color=SET_COLORS[bi];
+  if(ep){ep.textContent=pcts[bi]+'%';ep.style.color=SET_COLORS[bi];}
 }
 
 /* ── 保存 ── */
@@ -674,6 +702,23 @@ function delSess(id){
   if(!confirm('この記録を削除しますか？'))return;
   sessions=sessions.filter(s=>s.id!==id);
   saveSessions();navHistory=[];showScreen('cal');renderCal();
+}
+
+/* ── 名前編集 ── */
+function editSessionName(){
+  const newName=prompt('台の名前を変更してください',cur.name);
+  if(newName===null)return;
+  cur.name=newName.trim()||cur.name;
+  document.getElementById('count-title').textContent=cur.name;
+  saveDraft();
+}
+function editSessName(id){
+  const s=sessions.find(x=>x.id===id);if(!s)return;
+  const newName=prompt('名前を変更してください',s.name);
+  if(newName===null)return;
+  s.name=newName.trim()||s.name;
+  saveSessions();
+  renderSessions();
 }
 
 /* ── 下書き復元 ── */
